@@ -1,73 +1,63 @@
 # bfs.py
+from collections import deque
 from pacman_module.game import Agent
 from pacman_module.pacman import Directions
-from collections import deque
 
 
 def key(state):
     """
-    Returns a key that uniquely identifies a Pacman game state.
-
-    The key must be hashable so it can be stored in a set.
+    ฟังก์ชัน key: สร้างค่า hashable ที่แทนสถานะของเกม
+    ใช้เพื่อเก็บใน set (closed) และป้องกันการเยี่ยม state เดิมซ้ำ
     """
-    return (state.getPacmanPosition(),
-            state.getFood(),
-            tuple(state.getCapsules()))
+    return (
+        state.getPacmanPosition(),  # ตำแหน่งปัจจุบันของ Pacman
+        state.getFood(),            # ตารางอาหารที่เหลืออยู่ (Grid)
+        tuple(state.getCapsules())  # แปลง capsules ให้เป็น tuple เพื่อ hash ได้
+    )
 
 
 class PacmanAgent(Agent):
     """
-    A Pacman agent based on Breadth-First Search.
+    ตัวแทน (agent) ที่ใช้ Breadth-First Search (BFS)
     """
 
     def __init__(self, args):
-        """
-        Initialize the agent with the given arguments.
-        """
+        # เก็บเส้นทาง (list ของ moves) ที่หาเจอจาก BFS
         self.moves = []
 
     def get_action(self, state):
         """
-        Given a pacman game state, returns a legal move.
-        If no move has been precomputed yet, perform BFS to get
-        the list of actions, then pop them one by one.
+        คืน action (ทิศทาง) ถัดไปให้ Pacman
+        - ถ้ายังไม่มีเส้นทางใน self.moves ให้รัน BFS หาใหม่
+        - ถ้ามีแล้วก็หยิบออกมาทีละก้าว
         """
         if not self.moves:
-            self.moves = self.bfs(state)
-
-        if not self.moves:
-            return Directions.STOP
-
-        return self.moves.pop(0)
+            self.moves = self.bfs(state) or []  # กันไม่ให้เป็น None
+        return self.moves.pop(0) if self.moves else Directions.STOP
 
     def bfs(self, state):
         """
-        Perform a breadth-first search from the initial state.
-        Returns a list of actions that lead Pacman to a winning state.
+        อัลกอริทึม Breadth-First Search
+        - ขยาย state ออกไปทีละ "ชั้น" (level)
+        - หยุดเมื่อเจอสถานะชนะ (isWin)
         """
-        fringe = deque()              # queue for BFS (FIFO)
-        closed = set()                # visited set
-        fringe.append((state, []))    # each element is (GameState, path)
+        fringe = deque()      # ใช้คิว (FIFO) สำหรับ BFS
+        closed = set()        # เก็บ state ที่เคยเจอแล้ว
+        fringe.append((state, []))  # เก็บ tuple (สถานะ, เส้นทางที่เดินมา)
 
         while fringe:
-            current_state, path = fringe.popleft()
+            current, path = fringe.popleft()  # เอา state ตัวหน้าออกมา
 
-            # If we've found a winning state, return the path of moves
-            if current_state.isWin():
-                return path
+            if current.isWin():   # ถ้าเป็น state ชนะ
+                return path       # คืนเส้นทางทันที
 
-            state_key = key(current_state)
-
-            # Skip if this state was already visited
-            if state_key in closed:
+            k = key(current)
+            if k in closed:       # ถ้า state นี้เคยเจอแล้ว ข้ามไป
                 continue
+            closed.add(k)
 
-            closed.add(state_key)
+            # สร้าง successor (state ถัดไป + action ที่ทำให้ไปถึง)
+            for succ, action in current.generatePacmanSuccessors():
+                fringe.append((succ, path + [action]))
 
-            # Generate successors (next_state, action)
-            for successor, action in current_state.generatePacmanSuccessors():
-                new_path = path + [action]
-                fringe.append((successor, new_path))
-
-        # If no solution is found, return empty list (shouldn't normally happen)
-        return []
+        return []  # ถ้าไม่มีทางออกเลย

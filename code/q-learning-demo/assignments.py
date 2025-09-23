@@ -21,10 +21,10 @@ def assignment_1_basic():
     agent = SimpleQLearning(
         n_states=16,
         n_actions=4,
-        learning_rate=0.1,
+        learning_rate=0.1, #Test 0.01 กับ 0.5
         discount=0.9,
         epsilon=0.1
-    )
+    )   
     
     print("Grid World Setup:")
     env.print_grid()
@@ -49,9 +49,14 @@ def assignment_1_basic():
     
     print("\n--- Questions for Assignment 1 ---")
     print("1. อธิบายทำไม Q-value ของ state ที่ใกล้ goal มีค่าสูงกว่า")
+    print("     เพราะจากสมการ Bellman, ค่ารางวัลเป้าหมาย (+10) ถูกส่งย้อนกลับไปยัง state ก่อนหน้า")
+    print("      states ที่เดินอีกไม่กี่ก้าวถึง goal จึงมีค่าคาดหวังสูงกว่า")
     print("2. ทำไม epsilon-greedy policy สำคัญในการเรียนรู้")
+    print("     epsilon-greedy = บังคับให้สุ่ม action บางครั้ง (exploration) ")
+    print("     ทำให้ agent มีโอกาสลองเส้นทางใหม่ ๆ ป้องกันการ “คิดว่าเจอเส้นทางดีที่สุด ทั้งที่ยังไม่ได้ลองครบ")
     print("3. ลองเปลี่ยน learning rate เป็น 0.01 และ 0.5 แล้วเปรียบเทียบผล")
-
+    print("     learning rate 0.01 Agent อัปเดต Q-value ทีละน้อย → การเรียนรู้ช้ามาก Q-table มีค่าเล็ก ๆ และค่อย ๆ โตขึ้น → เสถียร แต่ช้า")
+    print("     Learning rate 0.5  Agent เรียนรู้เร็วมากในช่วงแรก → reward พุ่งถึง ~9.5 ได้เร็ว แต่ Q-value กระโดดขึ้นลงเยอะ ไม่ค่อยเสถียร")
 def assignment_2_parameter_study():
     """
     Assignment 2: Parameter Study
@@ -62,6 +67,8 @@ def assignment_2_parameter_study():
     
     # ทดลองกับ learning rates ต่างๆ
     learning_rates = [0.01, 0.1, 0.3, 0.7]
+    #epsilons = [0.01, 0.1, 0.3, 0.7
+    #gammas = [0.5, 0.7, 0.9, 0.99]
     print("Testing different learning rates:")
     
     for lr in learning_rates:
@@ -81,8 +88,19 @@ def assignment_2_parameter_study():
     
     print("\n--- Questions for Assignment 2 ---")
     print("1. Learning rate ไหนให้ผลดีที่สุด? ทำไม?")
+    print("     - 0.01 → ช้ามากกว่าจะดีขึ้น")
+    print("     - 0.7 → ขึ้นเร็วแต่ Q-values กระโดดเยอะ ไม่ค่อยเสถียร")
+    print("     - 0.1 หรือ 0.3 ดีที่สุด → สมดุล ทั้งเร็วและเสถียร")
     print("2. ลองทดลองกับ epsilon values: 0.01, 0.1, 0.3, 0.7")
+    print("     - 0.01: สำรวจน้อยเกินไป อาจพลาดเส้นทางที่ดีกว่า")
+    print("     - 0.1: สมดุลดี (exploit 90%, explore 10%) ✅")
+    print("     - 0.3: explore มากขึ้น เหมาะกับปัญหายากขึ้น")
+    print("     - 0.7: explore เยอะเกินไป agent เดินมั่ว ไม่ค่อย exploit")
     print("3. ลองทดลองกับ discount factor: 0.5, 0.7, 0.9, 0.99")
+    print("     - 0.5: สนใจแต่รางวัลใกล้ ๆ ไม่มุ่งไป goal")
+    print("     - 0.7: สนใจอนาคตบ้าง แต่ยังไม่มาก")
+    print("     - 0.9: สมดุล สนใจทั้งปัจจุบันและอนาคต ✅")
+    print("     - 0.99: สนใจอนาคตมากเกิน เรียนรู้ช้าลง")
 
 def assignment_3_environment_design():
     """
@@ -94,7 +112,15 @@ def assignment_3_environment_design():
     
     # TODO: ให้นักเรียนสร้าง environment ใหม่
     # ตัวอย่าง: Grid World ขนาดใหญ่กว่า หรือมีอุปสรรคมากกว่า
-    
+    # class CustomGridWorld(SimpleGridWorld):
+    #     def __init__(self):
+    #         super().__init__(size=6)   # ทำ grid 6x6
+    #     # ออกแบบอุปสรรคเอง
+    #         self.obstacles = [(1,1), (1,2), (2,3), (3,3), (4,2), (4,4)]
+    #     # ปรับ reward/penalty
+    #         self.goal_reward = 15
+    #         self.obstacle_penalty = -8
+
     class CustomGridWorld(SimpleGridWorld):
         def __init__(self):
             super().__init__(size=5)
@@ -110,6 +136,7 @@ def assignment_3_environment_design():
     
     agent = SimpleQLearning(
         n_states=25,
+        # n_states=36,
         n_actions=4,
         learning_rate=0.1,
         discount=0.9,
@@ -123,7 +150,11 @@ def assignment_3_environment_design():
     print("\n--- Tasks for Assignment 3 ---")
     print("1. ออกแบบ Grid World ของคุณเอง (ขนาด, อุปสรรค, rewards)")
     print("2. เปรียบเทียบผลการเรียนรู้กับ standard environment")
+    print("     - 4×4: agent ใช้ 6 steps ถึง goal, reward ≈ 9.5")
+    print("     - 6×6: agent ใช้ 10 steps ถึง goal, reward ≈ 9.1")
+    print("     - แปลว่าเมื่อ กริดใหญ่ขึ้น → agent ต้องใช้ก้าวมากขึ้น, reward เลยลดลงเล็กน้อย")
     print("3. วิเคราะห์ว่า environment design ส่งผลต่อ learning อย่างไร")
+    print("     -การออกแบบ environment ที่ใหญ่และซับซ้อนขึ้น ทำให้การเรียนรู้ยากขึ้น → ต้องใช้ episodes มากขึ้น, exploration สำคัญขึ้น")
 
 def assignment_4_advanced():
     """
@@ -172,6 +203,43 @@ def assignment_4_advanced():
     
     print("SARSA vs Q-Learning comparison example implemented above.")
 
+    print("\n=== ทดลองเปรียบเทียบ SARSA vs Q-Learning ===")
+
+    env = SimpleGridWorld(size=5, difficulty='normal')
+
+    # Q-Learning agent
+    q_agent = SimpleQLearning(
+        n_states=env.size * env.size,
+        n_actions=4,
+        learning_rate=0.1,
+        discount=0.9,
+        epsilon=0.2
+    )
+    q_agent.train(env, episodes=800)
+    q_reward, q_steps, _ = q_agent.test(env, show_path=False)
+    print(f"Q-Learning -> Reward={q_reward:.2f}, Steps={q_steps}")
+
+    # SARSA agent
+    sarsa_agent = SARSAAgent(
+        n_states=env.size * env.size,
+        n_actions=4,
+        learning_rate=0.1,
+        discount=0.9,
+        epsilon=0.2
+    )
+    sarsa_agent.train(env, episodes=800)
+    s_reward, s_steps, _ = sarsa_agent.test(env, show_path=False)
+    print(f"SARSA      -> Reward={s_reward:.2f}, Steps={s_steps}")
+
+    # สรุปผล
+    if s_reward > q_reward:
+        print("\nSARSA ทำได้ดีกว่าใน environment นี้ ✅")
+    elif q_reward > s_reward:
+        print("\nQ-Learning ทำได้ดีกว่าใน environment นี้ ✅")
+    else:
+        print("\nผลออกมาสูสีกัน")
+
+
 def bonus_visualization():
     """
     Bonus: Enhanced Visualization
@@ -183,7 +251,58 @@ def bonus_visualization():
     # TODO: ใช้ matplotlib สร้างกราฟ learning curve
     # TODO: สร้าง animation ของการเรียนรู้
     # TODO: แสดง heatmap ของ Q-values
-    
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+
+    """
+    Bonus: Enhanced Visualization
+    """
+    print("=== Bonus: Enhanced Visualization ===\n")
+
+    # สร้าง environment และ agent
+    from simple_q_learning import SimpleGridWorld, SimpleQLearning
+    env = SimpleGridWorld(size=4)
+    agent = SimpleQLearning(
+        n_states=env.size * env.size,
+        n_actions=4,
+        learning_rate=0.1,
+        discount=0.9,
+        epsilon=0.3
+    )
+
+    # ฝึก agent แล้วเก็บ reward
+    episodes = 500
+    agent.train(env, episodes=episodes)
+
+    # 📈 Plot Learning Curve
+    plt.figure(figsize=(8,5))
+    plt.plot(agent.episode_rewards, label="Episode reward")
+    plt.title("Q-Learning Performance (Learning Curve)")
+    plt.xlabel("Episode")
+    plt.ylabel("Total Reward")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+    # 🔥 Heatmap ของ Q-values (ค่า max Q ของแต่ละ state)
+    q_values = [max(agent.q_table[s]) for s in range(agent.n_states)]
+    q_grid = np.array(q_values).reshape(env.size, env.size)
+
+    plt.figure(figsize=(6,6))
+    plt.imshow(q_grid, cmap="YlGnBu", origin="upper")
+    plt.colorbar(label="Max Q-value")
+    plt.title("Heatmap of Max Q-values per State")
+    for r in range(env.size):
+        for c in range(env.size):
+            plt.text(c, r, f"{q_grid[r,c]:.1f}",
+                     ha="center", va="center", color="black")
+    plt.show()
+
+    print("\n✅ แสดงผล Learning Curve และ Heatmap เสร็จสิ้น!")
+
+        
     print("Ideas for enhanced visualization:")
     print("1. Plot learning curves with matplotlib")
     print("2. Create heatmap of Q-values")
