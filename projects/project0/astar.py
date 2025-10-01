@@ -3,60 +3,95 @@ from pacman_module.pacman import Directions
 import heapq
 import itertools
 
-# สร้าง key สำหรับ state เพื่อเช็คซ้ำ
-def key(state):
-    return (state.getPacmanPosition(), state.getFood(), tuple(state.getCapsules()))
+# ---------- Utilities ----------
 
-# heuristic แบบ Manhattan distance
-def manhattan_heuristic(pos, goals):
-    if not goals:
+def state_key(state):
+    """
+    ทำ key ของสถานะให้แฮชได้ชัวร์:
+    - ตำแหน่งแพคแมน (x, y)
+    - เซ็ตอาหารที่เหลือ (tuple ของตำแหน่งที่ sort แล้ว)
+    - แคปซูลที่เหลือ (tuple ของตำแหน่งที่ sort แล้ว)
+    """
+    pos = state.getPacmanPosition()
+    food = tuple(sorted(state.getFood().asList()))
+    capsules = tuple(sorted(state.getCapsules()))
+    return (pos, food, capsules)
+
+def manhattan(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+def max_manhattan_to_food(pos, foods):
+    """
+    Heuristic แบบ admissible: ระยะแมนฮัตตันไปยัง 'อาหารที่ไกลที่สุด'
+    - เป็น lower bound ที่ตึงกว่าใช้ 'อาหารที่ใกล้ที่สุด'
+    - ไม่พึ่งพาโครงสร้างเขาวงกต (แอดมิท)
+    """
+    if not foods:
         return 0
-    return min(abs(pos[0]-g[0]) + abs(pos[1]-g[1]) for g in goals)
+    return max(manhattan(pos, f) for f in foods)
+
+# ---------- A* Agent ----------
 
 class PacmanAgent(Agent):
     """
-    Pacman agent ใช้อัลกอริทึม A* search
+    A* search สำหรับเก็บอาหารให้หมดกระดาน
+    - ใช้ priority queue (heap) โดย key = f = g + h
+    - เก็บ best_g[state_key] เพื่อ reopen โหนดเมื่อพบเส้นทางดีกว่า
     """
     def __init__(self, args):
         self.moves = []
 
     def get_action(self, state):
         if not self.moves:
-            self.moves = self.astar(state)
-            if self.moves is None:
-                self.moves = []
+            self.moves = self.astar(state) or []
         return self.moves.pop(0) if self.moves else Directions.STOP
 
-    def astar(self, state):
-        """
-        คืนค่า list ของ moves เพื่อแก้ maze ด้วย A*
-        """
-        start_pos = state.getPacmanPosition()
-        food_positions = state.getFood().asList()
-        
-        heap = []
-        closed = set()
-        counter = itertools.count()  # เพิ่ม counter เพื่อหลีกเลี่ยง error heap
+    def astar(self, start_state):
+        # เตรียมข้อมูลเริ่มต้น
+        start_pos = start_state.getPacmanPosition()
+        start_foods = start_state.getFood().asList()
+        start_h = max_manhattan_to_food(start_pos, start_foods)
 
-        # push node แรกลง heap
-        heapq.heappush(heap, (manhattan_heuristic(start_pos, food_positions), 0, next(counter), state, []))
+        # priority queue: (f, g, tie, state, path)
+        heap = []
+        counter = itertools.count()
+        heapq.heappush(heap, (start_h, 0, next(counter), start_state, []))
+
+        # บันทึกระยะทางดีที่สุดที่รู้ต่อ state แต่ละตัว
+        best_g = {}
 
         while heap:
             f, g, _, current, path = heapq.heappop(heap)
 
+            # ถ้าชนะแล้วก็จบ
             if current.isWin():
                 return path
 
-            current_key = key(current)
-            if current_key in closed:
+            ck = state_key(current)
+
+            # ถ้าเราเคยเห็น state นี้ด้วย g ที่ดีกว่าแล้ว ให้ข้าม
+            if g > best_g.get(ck, float('inf')):
                 continue
-            closed.add(current_key)
 
+            # อัปเดต g ที่ดีที่สุดของสถานะนี้
+            best_g[ck] = g
+
+            # ขยายเพื่อนบ้าน
             for next_state, action in current.generatePacmanSuccessors():
-                next_path = path + [action]
-                next_pos = next_state.getPacmanPosition()
-                next_food = next_state.getFood().asList()
-                h = manhattan_heuristic(next_pos, next_food)
-                heapq.heappush(heap, (g + 1 + h, g + 1, next(counter), next_state, next_path))
+                new_path = path + [action]
+                new_g = g + 1
 
-        return []  # failure
+                # คำนวณ heuristic ใหม่
+                npos = next_state.getPacmanPosition()
+                nfoods = next_state.getFood().asList()
+                h = max_manhattan_to_food(npos, nfoods)
+
+                nk = state_key(next_state)
+
+                # ถ้าพบเส้นทางสั้นกว่าให้ push และบันทึก g ใหม่
+                if new_g < best_g.get(nk, float('inf')):
+                    best_g[nk] = new_g
+                    heapq.heappush(heap, (new_g + h, new_g, next(counter), next_state, new_path))
+
+        # หาไม่เจอ (ไม่น่าจะเกิดในเลย์เอาต์ปกติ)
+        return []
